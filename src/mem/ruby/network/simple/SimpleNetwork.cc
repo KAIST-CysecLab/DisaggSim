@@ -98,6 +98,10 @@ SimpleNetwork::makeExtOutLink(SwitchID src, NodeID global_dest,
     m_switches[src]->addOutPort(m_fromNetQueues[local_dest],
                                 routing_table_entry[0], simple_link->m_latency,
                                 simple_link->m_bw_multiplier);
+    // DisaggSim
+    m_switches[src]->addOutPort(m_ackOutNetQueues[local_dest], 
+                                routing_table_entry[0], simple_link->m_latency,
+                                simple_link->m_bw_multiplier);
 }
 
 // From an endpoint node to a switch

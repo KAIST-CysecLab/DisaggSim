@@ -45,6 +45,7 @@
 #include "mem/ruby/network/garnet/OutVcState.hh"
 #include "mem/ruby/slicc_interface/Message.hh"
 #include "params/GarnetNetworkInterface.hh"
+#include "mem/ruby/network/garnet/ReplayBuffer.hh"
 
 class MessageBuffer;
 class flitBuffer;
@@ -54,7 +55,7 @@ class NetworkInterface : public ClockedObject, public Consumer
   public:
     typedef GarnetNetworkInterfaceParams Params;
     NetworkInterface(const Params *p);
-    ~NetworkInterface() = default;
+    ~NetworkInterface();
 
     void addInPort(NetworkLink *in_link, CreditLink *credit_link);
     void addOutPort(NetworkLink *out_link, CreditLink *credit_link,
@@ -64,6 +65,11 @@ class NetworkInterface : public ClockedObject, public Consumer
     void wakeup();
     void addNode(std::vector<MessageBuffer *> &inNode,
                  std::vector<MessageBuffer *> &outNode);
+    // DisaggSim: add ack queue to interfaces
+    void addNode(std::vector<MessageBuffer*>& inNode,
+                 std::vector<MessageBuffer*>& outNode, std::vector<MessageBuffer*>& ackOutNode, std::vector<MessageBuffer*> ackInNode);
+    // DisaggSim: initialize sequence counter for each nodes
+    void initCounter();
 
     void print(std::ostream& out) const;
     int get_vnet(int vc);
@@ -281,7 +287,17 @@ class NetworkInterface : public ClockedObject, public Consumer
     std::vector<MessageBuffer *> outNode_ptr;
     // When a vc stays busy for a long time, it indicates a deadlock
     std::vector<int> vc_busy_counter;
-
+    // DisaggSim: vector of ackOutNodes
+    std::vector<MessageBuffer*> ackOutNode_ptr;
+    // DisaggSim: vector of ackInNodess
+    std::vector<MessageBuffer*> ackInNode_ptr;
+    // DisaggSim: sequence counters
+    std::vector<int> inNode_seq_counter;
+    std::vector<int> outNode_seq_counter;
+    // DisaggSim: vector of replay buffers
+    std::vector<ReplayBuffer*> replayBuffer_ptr;
+    // DisaggSim: end-to-end transmission delay
+    Cycles end_to_end_delay;
     void checkStallQueue();
     bool flitisizeMessage(MsgPtr msg_ptr, int vnet);
     int calculateVC(int vnet);
@@ -295,6 +311,9 @@ class NetworkInterface : public ClockedObject, public Consumer
 
     InputPort *getInportForVnet(int vnet);
     OutputPort *getOutportForVnet(int vnet);
+
+    // DisaggSim: Packet verification
+    bool verify_packet(MsgPtr msg, int vnet, bool bInNode=true) const;
 };
 
 #endif // __MEM_RUBY_NETWORK_GARNET_0_NETWORKINTERFACE_HH__

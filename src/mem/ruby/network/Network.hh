@@ -94,6 +94,12 @@ class Network : public ClockedObject
                                std::string vnet_type, MessageBuffer *b);
     virtual void setFromNetQueue(NodeID global_id, bool ordered, int netNumber,
                                  std::string vnet_type, MessageBuffer *b);
+    // DisaggSim: add setAckOutNetQueue
+    void setAckToNetQueue(NodeID global_id, bool ordered, int netNumber,
+        std::string vnet_type, MessageBuffer* b);
+    // DisaggSim: add setAckInNetQueue
+    void setAckFromNetQueue(NodeID global_id, bool ordered, int netNumber,
+        std::string vnet_type, MessageBuffer* b);
 
     virtual void checkNetworkAllocation(NodeID local_id, bool ordered,
                                        int network_num, std::string vnet_type);
@@ -157,6 +163,9 @@ class Network : public ClockedObject
     // vector of queues from the components
     std::vector<std::vector<MessageBuffer*> > m_toNetQueues;
     std::vector<std::vector<MessageBuffer*> > m_fromNetQueues;
+    // DisaggSim: Ack queue
+    std::vector <std::vector<MessageBuffer*> > m_ackOutNetQueues;
+    std::vector <std::vector<MessageBuffer*> > m_ackInNetQueues;
     std::vector<bool> m_ordered;
 
   private:

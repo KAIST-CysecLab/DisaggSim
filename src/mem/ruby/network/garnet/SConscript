@@ -33,6 +33,7 @@ if env['PROTOCOL'] == 'None':
 
 SimObject('GarnetLink.py')
 SimObject('GarnetNetwork.py')
+SimObject('ReplayBuffer.py')
 
 Source('GarnetLink.cc')
 Source('GarnetNetwork.cc')
@@ -50,3 +51,4 @@ Source('flitBuffer.cc')
 Source('flit.cc')
 Source('Credit.cc')
 Source('NetworkBridge.cc')
+Source('ReplayBuffer.cc')

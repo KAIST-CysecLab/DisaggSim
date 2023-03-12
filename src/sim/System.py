@@ -57,6 +57,7 @@ class System(SimObject):
     type = 'System'
     cxx_header = "sim/system.hh"
     system_port = RequestPort("System port")
+    is_dummy = Param.Bool(False, "is dummy system")
 
     cxx_exports = [
         PyBindMethod("getMemoryMode"),

@@ -57,7 +57,8 @@ MessageBuffer::MessageBuffer(const Params *p)
     m_max_size(p->buffer_size), m_time_last_time_size_checked(0),
     m_time_last_time_enqueue(0), m_time_last_time_pop(0),
     m_last_arrival_time(0), m_strict_fifo(p->ordered),
-    m_randomization(p->randomization)
+    m_randomization(p->randomization),
+    m_queuing_delay(p->queuing_delay)
 {
     m_msg_counter = 0;
     m_consumer = NULL;
@@ -177,7 +178,12 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
 
     // random delays are inserted if either RubySystem level randomization flag
     // is turned on, or the buffer level randomization is set
-    if (!RubySystem::getRandomization() && !m_randomization) {
+
+    // if m_queueing_delay is not zero, wakeup a consumer interface after m_queueing_delay cycles
+    if (m_queuing_delay)
+    {
+        arrival_time = current_time + m_queuing_delay * delta;
+    } else if (!RubySystem::getRandomization() && !m_randomization) {
         // No randomization
         arrival_time = current_time + delta;
     } else {

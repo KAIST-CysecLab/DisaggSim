@@ -203,7 +203,7 @@ System::Threads::quiesceTick(ContextID id, Tick when)
 int System::numSystemsRunning = 0;
 
 System::System(Params *p)
-    : SimObject(p), _systemPort("system_port", this),
+    : SimObject(p), isDummy(p->is_dummy),_systemPort("system_port", this),
       multiThread(p->multi_thread),
       pagePtr(0),
       init_param(p->init_param),
@@ -273,7 +273,7 @@ void
 System::init()
 {
     // check that the system port is connected
-    if (!_systemPort.isConnected())
+    if (!_systemPort.isConnected() && !isDummy)
         panic("System port on %s is not connected.\n", name());
 }
 

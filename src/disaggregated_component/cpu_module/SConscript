@@ -1,0 +1,7 @@
+Import('*')
+
+SimObject('CPUModule.py')
+SimObject('ForwardMemory.py')
+
+Source('cpu_module.cc')
+Source('forward_mem.cc')

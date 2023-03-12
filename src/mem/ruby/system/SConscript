@@ -51,6 +51,7 @@ SimObject('RubySystem.py')
 SimObject('Sequencer.py')
 if env['BUILD_GPU']:
     SimObject('VIPERCoalescer.py')
+SimObject('ModuleSequencer.py') # DisaggSim
 
 Source('CacheRecorder.cc')
 Source('DMASequencer.cc')
@@ -61,5 +62,7 @@ Source('RubyPort.cc')
 Source('RubyPortProxy.cc')
 Source('RubySystem.cc')
 Source('Sequencer.cc')
+Source('ModuleSequencer.cc') # DisaggSim
+
 if env['BUILD_GPU']:
     Source('VIPERCoalescer.cc')

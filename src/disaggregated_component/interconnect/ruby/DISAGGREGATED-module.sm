@@ -1,0 +1,420 @@
+machine(MachineType:DisaggregatedModule, "DISAGGREGATED module")
+    : ModuleSequencer *module_sequencer;
+
+      // Requests *to* another module
+      MessageBuffer * requestToModule, network="To", virtual_network="0", vnet_type="request";
+      // Responses *to* another module
+      MessageBuffer * responseToModule, network="To", virtual_network="1", vnet_type="response";
+
+      //Request *to* sequence counter
+      int reqeustToSeqCounter;
+      //Response *to* sequence counter
+      int responseToSeqCounter;
+
+      // Requests *from* another module
+      MessageBuffer * requestFromModule, network="From",virtual_network="0", vnet_type="request";
+      // Ack buffer for requestFromModule (vnet 0)
+      MessageBuffer * requestFromModuleAck, network="AckTo", virtual_network="0", vnet_type="request";
+      // Responses *from* another module
+      MessageBuffer * responseFromModule, network="From",virtual_network="1", vnet_type="response";
+       // Ack buffer for requestFromModule (vnet 1)
+      MessageBuffer * responseFromModuleAck, network="AckTo", virtual_network="1", vnet_type="response";
+
+      //Request *from* sequence counter
+      int requestFromSeqCounter;
+      //Response *from* sequence counter
+      int responseFromSeqCounter;
+
+      // Ack buffer for requestToModule (vnet 0)
+      MessageBuffer * requestToModuleAck, network="AckFrom", virtual_network="0", vnet_type="request";
+      // Replay buffer for requestToModule (vnet 0)
+      ReplayBuffer * requestToModuleReplayBuffer;
+      // Ack buffer for responseToModule (vnet 1)
+      MessageBuffer * responseToModuleAck, network="AckFrom", virtual_network="1", vnet_type="response";
+      //ReplayBuffer for requestToModule (vnet 1)
+      ReplayBuffer * responseToModuleReplayBuffer;
+
+      // Responses *from* this module
+      MessageBuffer * responseFromMemory;
+      // This is all of the incoming requests from the module via the sequencer
+      // Requests *from* this module
+      MessageBuffer * mandatoryQueue;
+{
+  state_declaration(State, desc="Dummy states", default="DisaggregatedModule_State_READY") {
+    READY, AccessPermission:Read_Write, desc="Ready to accept a new request";
+  }
+
+  enumeration(Event, desc="Module events") {
+    RECV_Request,  desc="Receive a new request";
+    RECV_Response,          desc="Receive response";
+    SEND_Request,  desc="Send a new request";
+    SEND_Response, desc="Send a new response";
+    RECV_Request_ACK, desc="Process an ACK for a reqeust";
+    RECV_Response_ACK, desc="Process an ACK for a response";
+  }
+
+// FUNCTIONS
+
+  State getState(Addr addr) {
+    return State:READY;
+  }
+
+  void setState(Addr addr,State state) {
+  }
+
+  Tick clockEdge();
+  // MachineID mapAddressToMachine(Addr addr, MachineType mtype);
+
+
+  AccessPermission getAccessPermission(Addr addr) {
+    return AccessPermission:Read_Write;
+  }
+
+  void setAccessPermission(Addr addr, State state) {
+  }
+
+  void functionalRead(Addr addr, Packet* pkt) {
+      module_sequencer.functionalRequest(pkt);
+  }
+
+  // This returns the number of writes. So, if we write then return 1
+  int functionalWrite(Addr addr, Packet* pkt) {
+      if (module_sequencer.functionalRequest(pkt)) {
+          return 1;
+      } else {
+          return 0;
+      }
+  }
+
+  Tick cyclesToTicks1();
+
+
+// PORTS
+
+  //request to another module
+  out_port(requestToModule_out, RequestMsg, requestToModule);
+
+  //response to another module
+  out_port(responseToModule_out, ResponseMsg, responseToModule);
+
+  //request from another module
+  in_port(requestFromModule_in, RequestMsg, requestFromModule) {
+    if (requestFromModule_in.isReady(clockEdge())) {
+      // just a dummy addr as any function requires at least Addr param
+      trigger(Event:RECV_Request, module_sequencer.dummyAddr());
+    }
+  }
+
+  //response from another module
+  in_port(responseFromModule_in, ResponseMsg, responseFromModule){
+    if (responseFromModule_in.isReady(clockEdge())) {
+      trigger(Event:RECV_Response, module_sequencer.dummyAddr());
+    }
+  }
+
+
+//Special message buffers
+  in_port(memQueue_in, MemoryMsg, responseFromMemory) {
+    if (memQueue_in.isReady(clockEdge())) {
+      trigger(Event:SEND_Response, module_sequencer.dummyAddr());
+    }
+  }
+
+  // Mandatory Queue
+  in_port(mandatoryQueue_in, RubyRequest, mandatoryQueue, desc="...") {
+    if (mandatoryQueue_in.isReady(clockEdge())) {
+      trigger(Event:SEND_Request, module_sequencer.dummyAddr());
+    }
+  }
+
+  // Request AckTo Queue
+  in_port(requestToModuleAck_in, AckMsg, requestToModuleAck, desc="...") {
+    if (requestToModuleAck_in.isReady(clockEdge())) {
+      trigger(Event:RECV_Request_ACK, module_sequencer.dummyAddr());
+    }
+  }
+ // Request replay buffer Queue. Replay buffer has two port: out_port, in_port.
+  out_port(requestToModuleReplay_out, RequestMsg, requestToModuleReplayBuffer, desc="...");
+  in_port(requestToModuleReplay_in, RequestMsg, requestToModuleReplayBuffer, desc="...")
+  {
+
+  }
+
+    // Response AckTo Queue
+  in_port(responseToModuleAck_in, AckMsg, responseToModuleAck, desc="...") {
+    if (responseToModuleAck_in.isReady(clockEdge())) {
+      trigger(Event:RECV_Response_ACK, module_sequencer.dummyAddr());
+    }
+  }
+
+   // Request replay buffer Queue. Replay buffer has two port: out_port, in_port.
+  out_port(responseToModuleReplay_out, ResponseMsg, responseToModuleReplayBuffer, desc="...");
+  in_port(responseToModuleReplay_in, RequestMsg, responseToModuleReplayBuffer, desc="...")
+  {
+
+  }
+
+  // Request AckFrom Queue
+  out_port(requestFromModuleAck_out, AckMsg, requestFromModuleAck, desc="...");
+
+  // Response AckFrom Queue
+  out_port(responseFromModuleAck_out, AckMsg, responseFromModuleAck, desc="...");
+
+
+// ACTIONS
+//  The generated C++ code implicitly includes up to three input parameters in the function header, again depending on the machine.
+//  These arguments are the memory address on which the action is being taken, the cache and transaction buffer entries pertaining to this address.
+// address is the address that was passed into the trigger function, 
+// cache_entry is the cache entry passed into the trigger function, 
+// and tbe is the TBE passed into the trigger function.
+
+
+  action(receiveRequest, "rrq", desc="Receive a request") {
+    peek(requestFromModule_in, RequestMsg) {
+      if (in_msg.sequence == requestFromSeqCounter+1)
+      {
+          enqueue(requestFromModuleAck_out, AckMsg, 1){
+              out_msg.Type := AckType:ACK;
+              out_msg.sequence := in_msg.sequence;
+          }
+          requestFromSeqCounter := requestFromSeqCounter+1;
+          module_sequencer.requestCallback(in_msg.pkt);
+      }
+      else
+      {
+          enqueue(requestFromModuleAck_out, AckMsg, 1) {
+              out_msg.Type := AckType:NACK;
+              out_msg.sequence := in_msg.sequence;
+          }   
+      }
+    }
+  }
+
+  action(popRequestQueue, "prq", desc="Pop request queue") {
+    requestFromModule_in.dequeue(clockEdge());
+  }
+
+  action(sendRequest, "srq", desc="Issue a request") {
+    peek(mandatoryQueue_in, RubyRequest) {
+      if (in_msg.Type == RubyRequestType:LD||in_msg.Type == RubyRequestType:IFETCH) {
+        enqueue(requestToModule_out, RequestMsg, 1) {
+          out_msg.addr := in_msg.PhysicalAddress;
+          out_msg.Type := AccessType:Read;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(module_sequencer.getDstMachineID(in_msg.pkt, MachineType:DisaggregatedModule));
+          out_msg.MessageSize := MessageSizeType:Control;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := reqeustToSeqCounter;
+        }
+      } else if ((in_msg.Type == RubyRequestType:ST) || (in_msg.Type == RubyRequestType:ATOMIC)
+                || (in_msg.Type == RubyRequestType:Store_Conditional)) {
+        enqueue(requestToModule_out, RequestMsg, 1) {
+          out_msg.addr := in_msg.PhysicalAddress;
+          out_msg.Type := AccessType:Write;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(module_sequencer.getDstMachineID(in_msg.pkt, MachineType:DisaggregatedModule));
+          out_msg.DataBlk := in_msg.WTData;
+          out_msg.MessageSize := MessageSizeType:Data;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := reqeustToSeqCounter;
+        }
+      } else {
+        error("Invalid RubyRequestType");
+      }
+      if (in_msg.Type == RubyRequestType:LD||in_msg.Type == RubyRequestType:IFETCH) {
+        enqueue(requestToModuleReplay_out, RequestMsg, 1) {
+          out_msg.addr := in_msg.PhysicalAddress;
+          out_msg.Type := AccessType:Read;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(module_sequencer.getDstMachineID(in_msg.pkt, MachineType:DisaggregatedModule));
+          out_msg.MessageSize := MessageSizeType:Control;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := reqeustToSeqCounter;
+        }
+      } else if ((in_msg.Type == RubyRequestType:ST) || (in_msg.Type == RubyRequestType:ATOMIC)
+                || (in_msg.Type == RubyRequestType:Store_Conditional)) {
+        enqueue(requestToModuleReplay_out, RequestMsg, 1) {
+          out_msg.addr := in_msg.PhysicalAddress;
+          out_msg.Type := AccessType:Write;
+          out_msg.Requestor := machineID;
+          out_msg.Destination.add(module_sequencer.getDstMachineID(in_msg.pkt, MachineType:DisaggregatedModule));
+          out_msg.DataBlk := in_msg.WTData;
+          out_msg.MessageSize := MessageSizeType:Data;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := reqeustToSeqCounter;
+        }
+      } else {
+        error("Invalid RubyRequestType");
+      }
+      reqeustToSeqCounter := reqeustToSeqCounter+1;
+    }
+  }
+
+  action(popMandatoryQueue, "pmanq", desc="Pop the mandatory queue") {
+    mandatoryQueue_in.dequeue(clockEdge());
+  }
+
+
+  action(sendResponse, "sr", desc="Send response to requestor") {
+    peek(memQueue_in, MemoryMsg) {
+      if(in_msg.Type == MemoryRequestType:MEMORY_READ){
+        enqueue(responseToModule_out, ResponseMsg, 1) {
+          out_msg.addr := in_msg.addr;
+          out_msg.Type := ResponseType:DATA;
+          out_msg.Sender := machineID;
+          out_msg.Destination.add(in_msg.OriginalRequestorMachId);
+          out_msg.DataBlk := in_msg.DataBlk;
+          out_msg.MessageSize := MessageSizeType:Response_Data;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := responseToSeqCounter;
+        }
+      } else if(in_msg.Type == MemoryRequestType:MEMORY_WB){
+        enqueue(responseToModule_out, ResponseMsg, 1) {
+          out_msg.addr := in_msg.addr;
+          out_msg.Type := ResponseType:WRITE_COMPLETE;
+          out_msg.Sender := machineID;
+          out_msg.Destination.add(in_msg.OriginalRequestorMachId);
+          out_msg.MessageSize := MessageSizeType:Response_Control;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := responseToSeqCounter;
+        }
+      } else{
+        error("Invalid ResponseType1");
+      }
+     if(in_msg.Type == MemoryRequestType:MEMORY_READ){
+        enqueue(responseToModuleReplay_out, ResponseMsg, 1) {
+          out_msg.addr := in_msg.addr;
+          out_msg.Type := ResponseType:DATA;
+          out_msg.Sender := machineID;
+          out_msg.Destination.add(in_msg.OriginalRequestorMachId);
+          out_msg.DataBlk := in_msg.DataBlk;
+          out_msg.MessageSize := MessageSizeType:Response_Data;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := responseToSeqCounter;
+        }
+      } else if(in_msg.Type == MemoryRequestType:MEMORY_WB){
+        enqueue(responseToModuleReplay_out, ResponseMsg, 1) {
+          out_msg.addr := in_msg.addr;
+          out_msg.Type := ResponseType:WRITE_COMPLETE;
+          out_msg.Sender := machineID;
+          out_msg.Destination.add(in_msg.OriginalRequestorMachId);
+          out_msg.MessageSize := MessageSizeType:Response_Control;
+          out_msg.pkt := in_msg.pkt;
+          out_msg.sequence := responseToSeqCounter;
+        }
+      } else{
+        error("Invalid ResponseType1");
+      }
+      responseToSeqCounter := responseToSeqCounter+1;
+    }
+  }
+
+
+  action(popMemQueue, "pmemq", desc="Pop memory queue") {
+    memQueue_in.dequeue(clockEdge());
+  }
+
+
+  action(receiveResponse, "rc", desc="Receive response") {
+    peek(responseFromModule_in, ResponseMsg) {
+      if (in_msg.sequence == responseFromSeqCounter+1)
+      {
+          enqueue(responseFromModuleAck_out, AckMsg, 1){
+              out_msg.Type := AckType:ACK;
+              out_msg.sequence := in_msg.sequence;
+          }
+          responseFromSeqCounter := responseFromSeqCounter+1;
+
+          if(in_msg.Type == ResponseType:DATA){
+            module_sequencer.dataCallback(in_msg.pkt);
+          } else if (in_msg.Type == ResponseType:WRITE_COMPLETE){
+            module_sequencer.writeCompleteCallback(in_msg.pkt);
+          } else{
+            error("Invalid ResponseType2");
+          }
+      }
+      else
+      {
+          enqueue(responseFromModuleAck_out, AckMsg, 1) {
+              out_msg.Type := AckType:NACK;
+              out_msg.sequence := in_msg.sequence;
+          }   
+      }
+    }
+  }
+
+  action(popResponseQueue, "prp", desc="Pop response queue") {
+    responseFromModule_in.dequeue(clockEdge());
+  }
+
+
+  action(popRequestAckQueue, "preqaq", desc="Pop reqeust ack queue") {
+    requestToModuleAck_in.dequeue(clockEdge());
+  }
+
+  action(popResponseAckQueue, "presaq", desc="Pop response ack queue") {
+    responseToModuleAck_in.dequeue(clockEdge());
+  }
+
+  action(receiveRequestACK, "rreqa", desc="Receive an ACK corresponding to a request") {
+    peek(requestToModuleAck_in, AckMsg) {
+      if(in_msg.Type == AckType:ACK){
+        // remove corresponding packet from the replay buffer
+        requestToModuleReplayBuffer.removeMessage(in_msg.sequence, clockEdge());
+        
+      }
+      else {
+        // replay corresponding packet
+        requestToModuleReplayBuffer.retrieveMessage(requestToModule, clockEdge(), cyclesToTicks1(), in_msg.sequence);
+      }
+    }
+  }
+
+  action(receiveResponseACK, "rrespa", desc="Receive an ACK corresponding to a response") {
+    peek(responseToModuleAck_in, AckMsg) {
+      if(in_msg.Type == AckType:ACK){
+        // remove corresponding packet from the replay buffer
+        responseToModuleReplayBuffer.removeMessage(in_msg.sequence, clockEdge());
+      }
+      else {
+        // replay corresponding packet
+        responseToModuleReplayBuffer.retrieveMessage(responseToModule, clockEdge(), cyclesToTicks1(), in_msg.sequence);
+      }
+    }
+  }
+
+
+// TRANSITIONS
+
+  transition(READY, RECV_Request) {
+    receiveRequest;
+    popRequestQueue;
+  }
+
+  transition(READY, SEND_Request) {
+    sendRequest;
+    popMandatoryQueue;
+  }
+
+  transition(READY, SEND_Response) {
+    sendResponse;
+    popMemQueue;
+  }
+
+  transition(READY, RECV_Response) {
+    receiveResponse;
+    popResponseQueue;
+  }
+
+  transition(READY, RECV_Request_ACK) {
+    receiveRequestACK;
+    popRequestAckQueue;
+  }
+
+  transition(READY, RECV_Response_ACK) {
+    receiveResponseACK;
+    popResponseAckQueue;
+  }
+
+
+}

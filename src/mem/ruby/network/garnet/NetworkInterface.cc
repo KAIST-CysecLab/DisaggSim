@@ -41,6 +41,8 @@
 #include "mem/ruby/network/garnet/Credit.hh"
 #include "mem/ruby/network/garnet/flitBuffer.hh"
 #include "mem/ruby/slicc_interface/Message.hh"
+#include "mem/ruby/protocol/AckMsg.hh"
+#include "mem/ruby/protocol/AckType.hh"
 
 using namespace std;
 
@@ -49,10 +51,28 @@ NetworkInterface::NetworkInterface(const Params *p)
     m_virtual_networks(p->virt_nets), m_vc_per_vnet(0),
     m_vc_allocator(m_virtual_networks, 0),
     m_deadlock_threshold(p->garnet_deadlock_threshold),
-    vc_busy_counter(m_virtual_networks, 0)
+    vc_busy_counter(m_virtual_networks, 0),
+    replayBuffer_ptr(p->replay_buffer),
+    end_to_end_delay(p->end_to_end_delay)
 {
     m_stall_count.resize(m_virtual_networks);
     niOutVcs.resize(0);
+    for (auto i : replayBuffer_ptr)
+    {
+        i->setConsumer(this);
+    }
+}
+
+NetworkInterface::~NetworkInterface()
+{
+    for (auto it : replayBuffer_ptr)
+    {
+        if (it != NULL)
+        {
+            delete it;
+            it = NULL;
+        }
+    }
 }
 
 void
@@ -133,6 +153,37 @@ NetworkInterface::addNode(vector<MessageBuffer *>& in,
     }
 }
 
+void NetworkInterface::addNode(std::vector<MessageBuffer*>& inNode,
+                               std::vector<MessageBuffer*>& outNode,
+                               std::vector<MessageBuffer*>& ackOutNode,
+                               std::vector<MessageBuffer*> ackInNode)
+{
+    inNode_ptr = inNode;
+    outNode_ptr = outNode;
+    ackOutNode_ptr = ackOutNode;
+    ackInNode_ptr = ackInNode;
+
+    for (auto& it : inNode) {
+        if (it != nullptr) {
+            it->setConsumer(this);
+        }
+    }
+
+    for (auto& it : ackInNode_ptr) {
+        if (it != nullptr) {
+            it->setConsumer(this);
+        }
+    }
+
+}
+
+void NetworkInterface::initCounter()
+{
+    inNode_seq_counter.resize(inNode_ptr.size(),-1);
+    outNode_seq_counter.resize(outNode_ptr.size(), 0);
+
+}
+
 void
 NetworkInterface::dequeueCallback()
 {
@@ -201,11 +252,54 @@ NetworkInterface::wakeup()
         if (b == nullptr) {
             continue;
         }
-
         if (b->isReady(curTime)) { // Is there a message waiting
             msg_ptr = b->peekMsgPtr();
             if (flitisizeMessage(msg_ptr, vnet)) {
                 b->dequeue(curTime);
+            }
+            int msg_seq = msg_ptr->getsequence();
+            bool blPktVeri = verify_packet(msg_ptr, vnet);
+            // TODO: add verifying packet
+            if (blPktVeri)
+            {
+                if ( /*!iPort->messageEnqueuedThisCycle &&*/
+                ackOutNode_ptr[vnet]->areNSlotsAvailable(1, curTime)) {
+                // Space is available. Enqueue to protocol buffer.
+                    // AckMsg* ackMsg = new AckMsg(curTime);
+                    // TODO: Incremental sequence
+                    shared_ptr<AckMsg> ackMsg = make_shared<AckMsg>(curTime);
+                    ackMsg->setsequence(msg_seq);
+                    ackMsg->setType(AckType_ACK);
+                    ackOutNode_ptr[vnet]->enqueue(std::shared_ptr <Message>(ackMsg), curTime,
+                                            cyclesToTicks(Cycles(1)));
+                    // set in node sequence counter to current packet's counter
+                    inNode_seq_counter[vnet] = msg_seq;
+
+                } else {
+                    // No space available- Place tail flit in stall queue and
+                    // set up a callback for when protocol buffer is dequeued.
+                    // Stat update and flit pointer deletion will occur upon
+                    // unstall.
+                    // TODO:
+                    // iPort->m_stall_queue.push_back(t_flit);
+                    // m_stall_count[vnet]++;
+                    // set in node sequence counter to current packet's counter
+                }
+            }
+            else
+            {
+                if ( /*!iPort->messageEnqueuedThisCycle &&*/
+                    ackOutNode_ptr[vnet]->areNSlotsAvailable(1, curTime)) {
+                    shared_ptr<AckMsg> ackMsg = make_shared<AckMsg>(curTime);
+                    ackMsg->setsequence(msg_seq);
+                    ackMsg->setType(AckType_NACK);
+                    ackOutNode_ptr[vnet]->enqueue(std::shared_ptr <Message>(ackMsg), curTime,
+                        cyclesToTicks(Cycles(1)));
+                }
+                else
+                {
+
+                }
             }
         }
     }
@@ -235,9 +329,21 @@ NetworkInterface::wakeup()
                 t_flit->get_type() == HEAD_TAIL_) {
                 if (!iPort->messageEnqueuedThisCycle &&
                     outNode_ptr[vnet]->areNSlotsAvailable(1, curTime)) {
+
+                    // set sequnence
+                    t_flit->get_msg_ptr()->setsequence(outNode_seq_counter[vnet]);
+                    outNode_seq_counter[vnet]++;
+
                     // Space is available. Enqueue to protocol buffer.
                     outNode_ptr[vnet]->enqueue(t_flit->get_msg_ptr(), curTime,
                                                cyclesToTicks(Cycles(1)));
+
+                    // store message to replay buffer
+                    MsgPtr cloned_msg = t_flit->get_msg_ptr()->clone();
+                    // TODO: solve a lastEnqueueTime Issue.
+                    cloned_msg->setLastEnqueueTime(curTime);
+                    replayBuffer_ptr[vnet]->enqueue(cloned_msg, curTime,
+                        cyclesToTicks(Cycles(1)));
 
                     // Simply send a credit back since we are not buffering
                     // this flit in the NI
@@ -270,6 +376,37 @@ NetworkInterface::wakeup()
                 incrementStats(t_flit);
                 delete t_flit;
             }
+        }
+    }
+    /***************** Check the Ack Buffer **************/
+    for (int vnet = 0; vnet < ackInNode_ptr.size(); vnet++)
+    {
+        MessageBuffer* b = ackInNode_ptr[vnet];
+        MsgPtr msg_ptr = nullptr;
+        if (b == nullptr) {
+            continue;
+        }
+        if (b->isReady(curTime)) { // Is there a message waiting
+            msg_ptr = b->peekMsgPtr();
+            b->dequeue(curTime);
+            AckMsg* ack = dynamic_cast<AckMsg*>(msg_ptr.get());
+            if (ack)
+            {
+                if (ack->getType() == AckType_ACK)
+                {
+                    replayBuffer_ptr[vnet]->removeMessage(msg_ptr->getsequence(), curTime);
+                }
+                else
+                {
+                    replayBuffer_ptr[vnet]->retrieveMessage(*b, curTime,
+                        cyclesToTicks(Cycles(1)), msg_ptr->getsequence());
+                }
+            }
+            else
+            {
+                // TODO: exception
+            }
+
         }
     }
 
@@ -513,6 +650,7 @@ NetworkInterface::scheduleOutputPort(OutputPort *oPort)
                // Just removing the top flit
                flit *t_flit = niOutVcs[vc].getTopFlit();
                t_flit->set_time(clockEdge(Cycles(1)));
+               // t_flit->set_time(clockEdge(end_to_end_delay));
 
                // Scheduling the flit
                scheduleFlit(t_flit);
@@ -576,6 +714,30 @@ NetworkInterface::getOutportForVnet(int vnet)
 
     return nullptr;
 }
+
+/*
+ * DisaggSim: Pacekt verification
+ */
+bool NetworkInterface::verify_packet(MsgPtr msg, int vnet, bool bInNode) const
+{
+    bool res = false;
+    if (msg == NULL)
+        return 0;
+
+    // verify packet sequence number
+    if (bInNode)
+    {
+        if (msg->getsequence() == (inNode_seq_counter[vnet] + 1))
+            res = true;
+    }
+    else
+    {
+        if (msg->getsequence() == (outNode_seq_counter[vnet] + 1))
+            res = true;
+    }
+    return res;
+}
+
 void
 NetworkInterface::scheduleFlit(flit *t_flit)
 {
@@ -583,10 +745,12 @@ NetworkInterface::scheduleFlit(flit *t_flit)
 
     if (oPort) {
         DPRINTF(RubyNetwork, "Scheduling at %s time:%ld flit:%s Message:%s\n",
-        oPort->outNetLink()->name(), clockEdge(Cycles(1)),
+        // DisaggSim: End-to-end delay for clockEdge
+        oPort->outNetLink()->name(), clockEdge(end_to_end_delay),
         *t_flit, *(t_flit->get_msg_ptr()));
         oPort->outFlitQueue()->insert(t_flit);
-        oPort->outNetLink()->scheduleEventAbsolute(clockEdge(Cycles(1)));
+        // DisaggSim: End-to-end delay for clockEdge
+        oPort->outNetLink()->scheduleEventAbsolute(clockEdge(end_to_end_delay));
         return;
     }
 

@@ -64,6 +64,8 @@ python_class_map = {
                     "DMASequencer": "DMASequencer",
                     "RubyPrefetcher":"RubyPrefetcher",
                     "Cycles":"Cycles",
+                    "ModuleSequencer":"ModuleSequencer", # DisaggSim: ModuleSequencer
+                    "ReplayBuffer":"ReplayBuffer", # DisaggSim: Replay buffer
                    }
 
 class StateMachine(Symbol):

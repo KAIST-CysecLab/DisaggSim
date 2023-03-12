@@ -68,6 +68,8 @@ typedef uint8_t* PacketDataPtr;
 typedef std::list<PacketPtr> PacketList;
 typedef uint64_t PacketId;
 
+#define CID uint32_t
+
 class MemCmd
 {
     friend class Packet;
@@ -339,6 +341,32 @@ class Packet : public Printable
     /// A pointer to the original request.
     RequestPtr req;
 
+    void setMemSubCID(unsigned int cid) { req->setMemSubCID(cid); }
+
+    unsigned int getMemSubCID() const { return req->getMemSubCID(); }
+
+    // CRC for reliable transaction
+    uint32_t crc;
+
+    // Sequence for relaible transaction
+    uint32_t sequence;
+
+    // for saving and restoring addresses after interconnect logic translation
+    void saveAddr(){
+        req->setOldAddr(addr);
+    }
+
+    void restoreAddr(){
+        setAddr(req->getOldAddr());
+    }
+
+    // accessors and modifiers for cids
+    void setSrcCID(uint32_t cid){req->setSrcCID(cid);}
+    void setDstCID(uint32_t cid){req->setDstCID(cid);}
+
+    uint32_t getSrcCID(){return req->getSrcCID();}
+    uint32_t getDstCID(){return req->getDstCID();}
+
   private:
    /**
     * A pointer to the data being transferred. It can be different
@@ -348,6 +376,9 @@ class Packet : public Printable
     * be allocated.
     */
     PacketDataPtr data;
+
+    // Data size
+    uint32_t datalen;
 
     /// The address of the request.  This address could be virtual or
     /// physical, depending on the system configuration.
@@ -823,7 +854,8 @@ class Packet : public Printable
      */
     Packet(const RequestPtr &_req, MemCmd _cmd)
         :  cmd(_cmd), id((PacketId)_req.get()), req(_req),
-           data(nullptr), addr(0), _isSecure(false), size(0),
+           crc(0), sequence(-1),
+           data(nullptr), datalen(0), addr(0), _isSecure(false), size(0),
            _qosValue(0),
            htmReturnReason(HtmCacheFailure::NO_FAIL),
            htmTransactionUid(0),
@@ -864,7 +896,8 @@ class Packet : public Printable
      */
     Packet(const RequestPtr &_req, MemCmd _cmd, int _blkSize, PacketId _id = 0)
         :  cmd(_cmd), id(_id ? _id : (PacketId)_req.get()), req(_req),
-           data(nullptr), addr(0), _isSecure(false),
+           crc(0), sequence(-1),
+           data(nullptr), datalen(0), addr(0), _isSecure(false),
            _qosValue(0),
            htmReturnReason(HtmCacheFailure::NO_FAIL),
            htmTransactionUid(0),
@@ -890,7 +923,9 @@ class Packet : public Printable
      */
     Packet(const PacketPtr pkt, bool clear_flags, bool alloc_data)
         :  cmd(pkt->cmd), id(pkt->id), req(pkt->req),
+           crc(pkt->crc), sequence(pkt->sequence),
            data(nullptr),
+           datalen(pkt->datalen),
            addr(pkt->addr), _isSecure(pkt->_isSecure), size(pkt->size),
            bytesValid(pkt->bytesValid),
            _qosValue(pkt->qosValue()),

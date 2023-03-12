@@ -46,7 +46,7 @@ Router::Router(const Params *p)
     m_virtual_networks(p->virt_nets), m_vc_per_vnet(p->vcs_per_vnet),
     m_num_vcs(m_virtual_networks * m_vc_per_vnet), m_bit_width(p->width),
     m_network_ptr(nullptr), routingUnit(this), switchAllocator(this),
-    crossbarSwitch(this)
+    crossbarSwitch(this), m_switching_delay(p->switching_delay)
 {
     m_input_unit.clear();
     m_output_unit.clear();

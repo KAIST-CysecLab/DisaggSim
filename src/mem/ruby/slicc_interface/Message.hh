@@ -46,14 +46,16 @@ class Message
     Message(Tick curTime)
         : m_time(curTime),
           m_LastEnqueueTime(curTime),
-          m_DelayedTicks(0), m_msg_counter(0)
+          m_DelayedTicks(0), m_msg_counter(0),
+          m_sequence(-1)
     { }
 
     Message(const Message &other)
         : m_time(other.m_time),
           m_LastEnqueueTime(other.m_LastEnqueueTime),
           m_DelayedTicks(other.m_DelayedTicks),
-          m_msg_counter(other.m_msg_counter)
+          m_msg_counter(other.m_msg_counter),
+          m_sequence(-1)
     { }
 
     virtual ~Message() { }
@@ -102,6 +104,8 @@ class Message
     void setIncomingLink(int link) { incoming_link = link; }
     int getVnet() const { return vnet; }
     void setVnet(int net) { vnet = net; }
+    virtual int& getsequence() { return m_sequence; };
+    virtual void setsequence(const int& local_sequence) { m_sequence = local_sequence; };
 
   private:
     Tick m_time;
@@ -112,6 +116,9 @@ class Message
     // Variables for required network traversal
     int incoming_link;
     int vnet;
+protected:
+    // for packet verification (reliable transmission)
+    int m_sequence;
 };
 
 inline bool

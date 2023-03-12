@@ -259,7 +259,7 @@ def config_mem(options, system):
 
     # hook up NVM interface when channel is shared with DRAM + NVM
     for i in range(len(nvm_intfs)):
-        mem_ctrls[i].nvm = nvm_intfs[i];
+        mem_ctrls[i].nvm = nvm_intfs[i]
 
     # Connect the controller to the xbar port
     for i in range(len(mem_ctrls)):

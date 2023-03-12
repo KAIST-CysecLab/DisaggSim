@@ -33,6 +33,7 @@ from m5.proxy import *
 from m5.objects.Network import RubyNetwork
 from m5.objects.BasicRouter import BasicRouter
 from m5.objects.ClockedObject import ClockedObject
+from m5.objects.ReplayBuffer import *
 
 class GarnetNetwork(RubyNetwork):
     type = 'GarnetNetwork'
@@ -49,6 +50,13 @@ class GarnetNetwork(RubyNetwork):
     garnet_deadlock_threshold = Param.UInt32(50000,
                               "network-level deadlock threshold")
 
+    # DisaggSim: Delay parameters
+    garnet_end_to_end_delay = Param.UInt32(0,
+                              "end_to_end delay")
+    queuing_delay = Param.UInt32(1,
+                              "Cycle to add a Msg")
+    switching_delay = Param.UInt32(40, "Cycle to process a packet header")
+
 class GarnetNetworkInterface(ClockedObject):
     type = 'GarnetNetworkInterface'
     cxx_class = 'NetworkInterface'
@@ -62,6 +70,12 @@ class GarnetNetworkInterface(ClockedObject):
     garnet_deadlock_threshold = Param.UInt32(Parent.garnet_deadlock_threshold,
                                       "network-level deadlock threshold")
 
+    # DisaggSim: Replay buffer
+    replay_buffer = VectorParam.ReplayBuffer([ReplayBuffer(ordered=True, queuing_delay=Parent.queuing_delay), ReplayBuffer(ordered=True, queuing_delay=Parent.queuing_delay)],"")
+
+    # DisaggSim: End-to-End delay
+    end_to_end_delay = Param.UInt32(Parent.garnet_end_to_end_delay, "cycle to transmit a flit")
+
 class GarnetRouter(BasicRouter):
     type = 'GarnetRouter'
     cxx_class = 'Router'
@@ -72,3 +86,6 @@ class GarnetRouter(BasicRouter):
                           "number of virtual networks")
     width = Param.UInt32(Parent.ni_flit_size,
                           "bit width supported by the router")
+
+    # DisaggSim: Switching delay
+    switching_delay = Param.UInt32(Parent.switching_delay, "cycle to switching a flit")

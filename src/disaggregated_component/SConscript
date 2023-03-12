@@ -1,0 +1,9 @@
+Import('*')
+
+SimObject('DisaggregatedSystem.py')
+SimObject('InterconnectLogic.py')
+
+Source('translation_information.cc')
+Source('disaggregated_system.cc')
+Source('interconnect_logic.cc')
+Source('capability_ticket.cc')

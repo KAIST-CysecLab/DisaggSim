@@ -1,0 +1,4 @@
+Import('*')
+
+Source('disaggregated_ruby_system.cc')
+SimObject('DisaggregatedRubySystem.py')

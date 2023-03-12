@@ -50,29 +50,49 @@ from m5.objects import *
 # specific instantiations.
 
 class L1Cache(Cache):
-    assoc = 2
-    tag_latency = 2
-    data_latency = 2
-    response_latency = 2
-    mshrs = 4
+    assoc = 8
+    tag_latency = 3
+    data_latency = 3
+    response_latency = 1
+    mshrs = 8
     tgts_per_mshr = 20
 
-class L1_ICache(L1Cache):
+class L1ICache(Cache):
+    assoc = 8
+    tag_latency = 1
+    data_latency = 1
+    response_latency = 1
+    mshrs = 8
+    tgts_per_mshr = 20
+
+
+class L1_ICache(L1ICache):
     is_read_only = True
     # Writeback clean lines as well
     writeback_clean = True
 
 class L1_DCache(L1Cache):
-    pass
+    write_buffers = 10
+
 
 class L2Cache(Cache):
     assoc = 8
-    tag_latency = 20
-    data_latency = 20
-    response_latency = 20
-    mshrs = 20
+    tag_latency = 6
+    data_latency = 6
+    response_latency = 2
+    mshrs = 4
     tgts_per_mshr = 12
-    write_buffers = 8
+    write_buffers = 6
+
+class L3Cache(Cache):
+    assoc = 16
+    tag_latency = 18
+    data_latency = 18
+    response_latency = 4
+    mshrs = 8
+    tgts_per_mshr = 20
+    write_buffers = 12
+
 
 class IOCache(Cache):
     assoc = 8

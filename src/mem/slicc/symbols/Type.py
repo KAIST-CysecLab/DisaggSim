@@ -84,6 +84,11 @@ class Type(Symbol):
         if self.ident == "Prefetcher":
             self["prefetcher"] = "yes"
 
+        if self.ident == "ReplayBuffer":
+            self["outport"] = "yes"
+            self["buffer"] = "yes"
+            self["inport"] = "yes"
+            
         self.isMachineType = (ident == "MachineType")
 
         self.isStateDecl = ("state_decl" in self)

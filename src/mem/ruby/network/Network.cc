@@ -101,6 +101,9 @@ Network::Network(const Params *p)
     // Queues that are feeding the protocol
     m_fromNetQueues.resize(m_nodes);
 
+    m_ackOutNetQueues.resize(m_nodes);
+    m_ackInNetQueues.resize(m_nodes);
+
     m_ordered.resize(m_virtual_networks);
     m_vnet_type_names.resize(m_virtual_networks);
 
@@ -145,6 +148,15 @@ Network::~Network()
         for (auto& it : m_fromNetQueues[node]) {
             delete it;
         }
+
+        for (auto& it : m_ackOutNetQueues[node]) {
+            delete it;
+        }
+
+        for (auto& it : m_ackInNetQueues[node]) {
+            delete it;
+        }
+
     }
 
     delete m_topology_ptr;
@@ -225,6 +237,29 @@ Network::setFromNetQueue(NodeID global_id, bool ordered, int network_num,
         m_fromNetQueues[local_id].push_back(nullptr);
     }
     m_fromNetQueues[local_id][network_num] = b;
+}
+
+void Network::setAckToNetQueue(NodeID global_id, bool ordered, int network_num, 
+                                       std::string vnet_type, MessageBuffer* b)
+{
+    NodeID local_id = getLocalNodeID(global_id);
+    checkNetworkAllocation(local_id, ordered, network_num, vnet_type);
+
+    while (m_ackInNetQueues[local_id].size() <= network_num) {
+        m_ackInNetQueues[local_id].push_back(nullptr);
+    }
+    m_ackInNetQueues[local_id][network_num] = b;
+}
+
+void Network::setAckFromNetQueue(NodeID global_id, bool ordered, int network_num, std::string vnet_type, MessageBuffer* b)
+{
+    NodeID local_id = getLocalNodeID(global_id);
+    checkNetworkAllocation(local_id, ordered, network_num, vnet_type);
+
+    while (m_ackOutNetQueues[local_id].size() <= network_num) {
+        m_ackOutNetQueues[local_id].push_back(nullptr);
+    }
+    m_ackOutNetQueues[local_id][network_num] = b;
 }
 
 NodeID

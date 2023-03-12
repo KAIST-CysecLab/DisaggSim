@@ -1,0 +1,95 @@
+enumeration(ResponseType, desc="...") {
+  WRITE_COMPLETE, desc="Ack from another module";
+  DATA, desc="Data from another module";
+  DISAGRREGATED_ACK, desc="DISAGRREGATED Write ack from another module";
+}
+
+enumeration(AckType, desc="...") {
+  ACK, desc="ACK";
+  NACK, desc="NACK";
+}
+
+// RequestMsg
+structure(RequestMsg, desc="...", interface="Message") {
+  Addr addr,              desc="Physical address for this request";
+  AccessType Type,    desc="write or read";
+  MachineID Requestor      ,    desc="What component request";
+  NetDest Destination,          desc="What components receive the request, includes MachineType and num";
+  MessageSizeType MessageSize,  desc="size category of the message";
+  DataBlock DataBlk,            desc="Data";
+  int Len;
+  PacketPtr pkt,             desc="Packet associated with this request";
+  int sequence,  desc="packet sequence";
+ 
+
+  bool functionalRead(Packet *pktt) {
+    return testAndRead(addr, DataBlk, pktt);
+  }
+
+  bool functionalWrite(Packet *pktt) {
+    return testAndWrite(addr, DataBlk, pktt);
+  }
+}
+
+// ResponseMsg
+structure(ResponseMsg, desc="...", interface="Message") {
+  Addr addr,              desc="Physical address for this request";
+  ResponseType Type,   desc="Type of response";
+  MachineID Sender,             desc="What component sent the data";
+  NetDest Destination,          desc="Node to whom the data is sent";
+  DataBlock DataBlk,            desc="Data for the cache line";
+  MessageSizeType MessageSize,  desc="size category of the message";
+  PacketPtr pkt,             desc="Packet associated with this request";
+  int sequence,  desc="packet sequence";
+
+
+  bool functionalRead(Packet *pktt) {
+      return testAndRead(addr, DataBlk, pktt);
+  }
+
+  bool functionalWrite(Packet *pktt) {
+    return testAndWrite(addr, DataBlk, pktt);
+  }
+}
+
+// AckMsg
+structure(AckMsg, desc="...", interface="Message") {
+  Addr addr,              desc="Physical address for this request";
+  AckType Type,   desc="Type of ACK, ACK or NACK";
+  int sequence,  desc="packet sequence";
+  //MachineID Sender,             desc="What component sent the data";
+  //NetDest Destination,          desc="Node to whom the data is sent";
+  DataBlock DataBlk,            desc="Data for the cache line";
+  //MessageSizeType MessageSize,  desc="size category of the message";
+  PacketPtr pkt,             desc="Packet associated with this request";
+
+    bool functionalRead(Packet *pktt) {
+      return testAndRead(addr, DataBlk, pktt);
+  }
+
+  bool functionalWrite(Packet *pktt) {
+    return testAndWrite(addr, DataBlk, pktt);
+  }
+
+}
+
+structure (ModuleSequencer, external = "yes"){
+  Addr dummyAddr();
+  bool functionalRequest(Packet* pkt);
+  MachineID getDstMachineID(PacketPtr, MachineType);
+  void writeCompleteCallback(PacketPtr);
+  void dataCallback(PacketPtr);
+  void requestCallback(PacketPtr);
+  // 2021.04.12 - replay buffer
+  //MsgPtr retrieveMsgfromReplayBuffer(int seq, int network);
+  //bool flushReplayBufferUptoSeq(int seq, int network);
+  //void addMsgToReplayBuffer(MsgPtr msg, int network);
+  //void removeMsgFromReplayBuffer(int seq, int network);
+}
+
+structure (ReplayBuffer, external = "yes"){
+  void retrieveMessage(MessageBuffer* pBuffer, Tick tick, Tick delta, int sequence);
+  void flushMessageUptoSeq(int seq);
+  void addMessage(MessageBuffer* pBuffer, Tick tick, Tick delta, int sequence);
+  void removeMessage(int seq, Tick tick);  
+}

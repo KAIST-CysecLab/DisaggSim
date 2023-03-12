@@ -307,6 +307,11 @@ class ResponsePort : public Port, public AtomicResponseProtocol,
     void unbind() override {}
     void bind(Port &peer) override {}
 
+    /* DisaggSim:
+     * for disaggregated system memory pool controller's subCID
+     * notification */
+    RequestPort* getRequestPort() { return _requestPort; }
+
   public:
     /* The atomic protocol. */
 

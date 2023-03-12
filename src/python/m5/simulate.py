@@ -321,6 +321,75 @@ def switchCpus(system, cpuList, verbose=True):
     for old_cpu, new_cpu in cpuList:
         new_cpu.takeOverFrom(old_cpu)
 
+def d_switchCpus(cpu_modules, cpuLists, verbose=True):
+
+    if verbose:
+        print("switching cpus")
+
+    cpuList = sum(cpuLists, [])
+
+    if not isinstance(cpuList, list):
+        raise RuntimeError("Must pass a list to this function")
+    for item in cpuList:
+        if not isinstance(item, tuple) or len(item) != 2:
+            raise RuntimeError("List must have tuples of (oldCPU,newCPU)")
+
+    old_cpus = [old_cpu for old_cpu, new_cpu in cpuList]
+    new_cpus = [new_cpu for old_cpu, new_cpu in cpuList]
+    old_cpu_set = set(old_cpus)
+    memory_mode_name = new_cpus[0].memory_mode()
+    for old_cpu, new_cpu in cpuList:
+        if not isinstance(old_cpu, objects.BaseCPU):
+            raise TypeError("%s is not of type BaseCPU" % old_cpu)
+        if not isinstance(new_cpu, objects.BaseCPU):
+            raise TypeError("%s is not of type BaseCPU" % new_cpu)
+        if new_cpu in old_cpu_set:
+            raise RuntimeError(
+                "New CPU (%s) is in the list of old CPUs." % (old_cpu,))
+        if not new_cpu.switchedOut():
+            raise RuntimeError("New CPU (%s) is already active." % (new_cpu,))
+        if not new_cpu.support_take_over():
+            raise RuntimeError(
+                "New CPU (%s) does not support CPU handover." % (old_cpu,))
+        if new_cpu.memory_mode() != memory_mode_name:
+            raise RuntimeError(
+                "%s and %s require different memory modes." % (new_cpu,
+                                                               new_cpus[0]))
+        if old_cpu.switchedOut():
+            raise RuntimeError("Old CPU (%s) is inactive." % (new_cpu,))
+        if not old_cpu.support_take_over():
+            raise RuntimeError(
+                "Old CPU (%s) does not support CPU handover." % (old_cpu,))
+
+    try:
+        memory_mode = _memory_modes[memory_mode_name]
+    except KeyError:
+        raise RuntimeError("Invalid memory mode (%s)" % memory_mode_name)
+
+    drain()
+
+    # Now all of the CPUs are ready to be switched out
+    for old_cpu, new_cpu in cpuList:
+        old_cpu.switchOut()
+
+    # Change the memory mode if required. We check if this is needed
+    # to avoid printing a warning if no switch was performed.
+
+    for module in cpu_modules:
+        if module.getMemoryMode() != memory_mode:
+            # Flush the memory system if we are switching to a memory mode
+            # that disables caches. This typically happens when switching to a
+            # hardware virtualized CPU.
+            if memory_mode == objects.params.atomic_noncaching:
+                memWriteback(module)
+                memInvalidate(module)
+
+            _changeMemoryMode(module, memory_mode)
+
+    for old_cpu, new_cpu in cpuList:
+        new_cpu.takeOverFrom(old_cpu)
+
+
 def notifyFork(root):
     for obj in root.descendants():
         obj.notifyFork()

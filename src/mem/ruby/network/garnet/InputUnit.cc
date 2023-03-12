@@ -110,25 +110,44 @@ InputUnit::wakeup()
         m_num_buffer_reads[vnet]++;
 
         Cycles pipe_stages = m_router->get_pipe_stages();
-        if (pipe_stages == 1) {
-            // 1-cycle router
-            // Flit goes for SA directly
-            t_flit->advance_stage(SA_, curTick());
-        } else {
-            assert(pipe_stages > 1);
-            // Router delay is modeled by making flit wait in buffer for
-            // (pipe_stages cycles - 1) cycles before going for SA
+        Cycles switching_delay = m_router->get_switching_delay();
+        Cycles wait_time = pipe_stages - Cycles(1);
+        if (switching_delay == 0)
+        {
+            if (pipe_stages == 1) {
+                // 1-cycle router
+                // Flit goes for SA directly
+                t_flit->advance_stage(SA_, curTick());
+            }
+            else {
+                assert(pipe_stages > 1);
+                // Router delay is modeled by making flit wait in buffer for
+                // (pipe_stages cycles - 1) cycles before going for SA
 
-            Cycles wait_time = pipe_stages - Cycles(1);
-            t_flit->advance_stage(SA_, m_router->clockEdge(wait_time));
+                //Cycles wait_time = pipe_stages - Cycles(1);
+                //Cycles wait_time = switching_delay - Cycles(1);
+                t_flit->advance_stage(SA_, m_router->clockEdge(wait_time));
+
+                // Wakeup the router in that cycle to perform SA
+                m_router->schedule_wakeup(Cycles(wait_time));
+            }
+
+            if (m_in_link->isReady(curTick())) {
+                   m_router->schedule_wakeup(Cycles(1));
+                 }
+            }
+        else
+        {
+            t_flit->advance_stage(SA_, m_router->clockEdge(switching_delay-Cycles(1)));
 
             // Wakeup the router in that cycle to perform SA
-            m_router->schedule_wakeup(Cycles(wait_time));
+            m_router->schedule_wakeup(Cycles(switching_delay - Cycles(1)));
         }
 
         if (m_in_link->isReady(curTick())) {
             m_router->schedule_wakeup(Cycles(1));
         }
+   
     }
 }
 

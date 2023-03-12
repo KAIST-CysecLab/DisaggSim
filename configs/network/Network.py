@@ -51,13 +51,13 @@ def define_options(parser):
                             Has to be >= 1.
                             Can be over-ridden on a per router basis
                             in the topology file.""")
-    parser.add_option("--link-latency", action="store", type="int", default=1,
+    parser.add_option("--link-latency", action="store", type="int", default=3,
                       help="""latency of each link the simple/garnet networks.
                             Has to be >= 1.
                             Can be over-ridden on a per link basis
                             in the topology file.""")
     parser.add_option("--link-width-bits", action="store", type="int",
-                      default=128,
+                      default=288,
                       help="width in bits for all links inside garnet.")
     parser.add_option("--vcs-per-vnet", action="store", type="int", default=4,
                       help="""number of virtual channels per virtual network
@@ -75,7 +75,16 @@ def define_options(parser):
     parser.add_option("--garnet-deadlock-threshold", action="store",
                       type="int", default=50000,
                       help="network-level deadlock threshold.")
+                      
+    parser.add_option("--garnet-end-to-end-delay", action="store", type="int",
+                      default=4, help="""end to end delay""")
 
+    parser.add_option("--queuing-delay", action="store", type="int",
+                      default=1, help="""cycle to queuing a message""")
+                      
+    parser.add_option("--switching-delay", action="store", type="int",
+                      default=80, help="""time to read packet's header""")
+                      
 def create_network(options, ruby):
 
     # Allow legacy users to use garnet through garnet2.0 option
@@ -116,6 +125,9 @@ def init_network(options, network, InterfaceClass):
         network.ni_flit_size = options.link_width_bits / 8
         network.routing_algorithm = options.routing_algorithm
         network.garnet_deadlock_threshold = options.garnet_deadlock_threshold
+        network.garnet_end_to_end_delay = options.garnet_end_to_end_delay
+        network.queuing_delay = options.queuing_delay
+        network.switching_delay = options.switching_delay
 
         # Create Bridges and connect them to the corresponding links
         for intLink in network.int_links:

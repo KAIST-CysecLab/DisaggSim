@@ -79,6 +79,8 @@ class Router : public BasicRouter, public Consumer
     int get_num_inports()   { return m_input_unit.size(); }
     int get_num_outports()  { return m_output_unit.size(); }
     int get_id()            { return m_id; }
+    // DisaggSim: Switching delay
+    Cycles get_switching_delay() { return m_switching_delay; }
 
     void init_net_ptr(GarnetNetwork* net_ptr)
     {
@@ -152,6 +154,9 @@ class Router : public BasicRouter, public Consumer
     Stats::Scalar m_sw_output_arbiter_activity;
 
     Stats::Scalar m_crossbar_activity;
+
+    // DisaggSim: processing delay
+    Cycles m_switching_delay;
 };
 
 #endif // __MEM_RUBY_NETWORK_GARNET_0_ROUTER_HH__

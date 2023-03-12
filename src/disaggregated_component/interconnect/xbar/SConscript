@@ -1,0 +1,7 @@
+Import('*')
+
+SimObject('DisaggregatedInterconnect.py')
+
+Source('disaggregated_interconnect.cc')
+
+DebugFlag('DisaggregatedInterconnect')

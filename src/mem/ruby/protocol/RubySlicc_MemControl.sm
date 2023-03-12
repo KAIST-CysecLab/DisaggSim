@@ -62,12 +62,13 @@ structure(MemoryMsg, desc="...", interface="Message") {
   PrefetchBit Prefetch,         desc="Is this a prefetch request";
   bool ReadX,                   desc="Exclusive";
   int Acks,                     desc="How many acks to expect";
+  PacketPtr pkt,                desc="DisaggSim packet";
 
-  bool functionalRead(Packet *pkt) {
-    return testAndRead(addr, DataBlk, pkt);
+  bool functionalRead(Packet *pktt) {
+    return testAndRead(addr, DataBlk, pktt);
   }
 
-  bool functionalWrite(Packet *pkt) {
-    return testAndWrite(addr, DataBlk, pkt);
+  bool functionalWrite(Packet *pktt) {
+    return testAndWrite(addr, DataBlk, pktt);
   }
 }

@@ -104,7 +104,11 @@ GarnetNetwork::init()
     Network::init();
 
     for (int i=0; i < m_nodes; i++) {
-        m_nis[i]->addNode(m_toNetQueues[i], m_fromNetQueues[i]);
+        // DisaggSim: add ack queue
+        m_nis[i]->addNode(m_toNetQueues[i], m_fromNetQueues[i],
+                          m_ackOutNetQueues[i], m_ackInNetQueues[i]);
+        // DisaggSim: init sequence counter for each nodes
+        m_nis[i]->initCounter();
     }
 
     // The topology pointer should have already been initialized in the

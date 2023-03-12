@@ -86,6 +86,47 @@ typedef uint16_t RequestorID;
 
 class Request
 {
+  // Disaggregated System Modification
+  private:
+    uint32_t srcCID = -1;
+    uint32_t dstCID = -1;
+    uint32_t memSubCID = -1; // left as -1 if not used
+    Addr oldPaddr = 0;
+    Addr oldAddr = 0; // addr from packet class
+
+    bool isAddrSaved = false;
+    bool isPaddrSaved = false;
+
+  public:
+    void setSrcCID(uint32_t cid) { srcCID = cid; }
+    void setDstCID(uint32_t cid) { dstCID = cid; }
+    void setMemSubCID(uint32_t cid) { memSubCID = cid; }
+
+    uint32_t getSrcCID() { return srcCID; }
+    uint32_t getDstCID() { return dstCID; }
+    uint32_t getMemSubCID() { return memSubCID; }
+
+    void savePaddr() {
+        isPaddrSaved = true;
+        oldPaddr = getPaddr();
+    }
+
+    void restorePaddr() {
+        assert(isPaddrSaved == true);
+        setPaddr(oldPaddr);
+    }
+
+    void setOldAddr(Addr addr) {
+        isAddrSaved = true;
+        oldAddr = addr;
+    }
+
+    Addr getOldAddr() {
+        assert(isAddrSaved == true);
+        return oldAddr;
+    }
+
+
   public:
     typedef uint64_t FlagsType;
     typedef uint8_t ArchFlagsType;

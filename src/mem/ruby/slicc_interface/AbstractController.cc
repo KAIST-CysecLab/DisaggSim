@@ -376,3 +376,9 @@ AbstractController::MemoryPort::MemoryPort(const std::string &_name,
     : RequestPort(_name, _controller, id), controller(_controller)
 {
 }
+
+Tick
+AbstractController::cyclesToTicks1()
+{
+	return cyclesToTicks(Cycles(1));
+}

@@ -44,3 +44,4 @@ class MessageBuffer(SimObject):
     master = DeprecatedParam(out_port, '`master` is now called `out_port`')
     in_port = ResponsePort("Response port from MessageBuffer sender")
     slave = DeprecatedParam(in_port, '`slave` is now called `in_port`')
+    queuing_delay = Param.Int32(1, "queuing_delay")

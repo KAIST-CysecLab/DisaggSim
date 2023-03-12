@@ -91,8 +91,10 @@ class RubySystem : public ClockedObject
     void process();
     void init() override;
     void startup() override;
-    bool functionalRead(Packet *ptr);
-    bool functionalWrite(Packet *ptr);
+
+    // DisaggSim: changed into virtual
+    virtual bool functionalRead(Packet *ptr);
+    virtual bool functionalWrite(Packet *ptr);
 
     void registerNetwork(Network*);
     void registerAbstractController(AbstractController*);
@@ -123,6 +125,10 @@ class RubySystem : public ClockedObject
                                      uint64_t uncompressed_trace_size);
 
     void processRubyEvent();
+  // DisaggSim START
+  protected:
+    std::vector<AbstractController *> m_abs_cntrl_vec;
+  // DisaggSim END
   private:
     // configuration parameters
     static bool m_randomization;
@@ -136,9 +142,9 @@ class RubySystem : public ClockedObject
     SimpleMemory *m_phys_mem;
     const bool m_access_backing_store;
 
-    //std::vector<Network *> m_networks;
+    // std::vector<Network *> m_networks;
     std::vector<std::unique_ptr<Network>> m_networks;
-    std::vector<AbstractController *> m_abs_cntrl_vec;
+    // std::vector<AbstractController *> m_abs_cntrl_vec;
     Cycles m_start_cycle;
 
     std::unordered_map<MachineID, unsigned> machineToNetwork;

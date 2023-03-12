@@ -149,6 +149,8 @@ class MessageBuffer : public SimObject
     void setIncomingLink(int link_id) { m_input_link_id = link_id; }
     void setVnet(int net) { m_vnet_id = net; }
 
+    Tick getQueuingDelay() { return m_queuing_delay; }
+
     Port &
     getPort(const std::string &, PortID idx=InvalidPortID) override
     {
@@ -183,9 +185,9 @@ class MessageBuffer : public SimObject
     // Data Members (m_ prefix)
     //! Consumer to signal a wakeup(), can be NULL
     Consumer* m_consumer;
-    std::vector<MsgPtr> m_prio_heap;
-
     std::function<void()> m_dequeue_callback;
+    protected:
+    std::vector<MsgPtr> m_prio_heap;
 
     // use a std::map for the stalled messages as this container is
     // sorted and ensures a well-defined iteration order
@@ -257,6 +259,8 @@ class MessageBuffer : public SimObject
     Stats::Average m_stall_time;
     Stats::Scalar m_stall_count;
     Stats::Formula m_occupancy;
+
+    Tick m_queuing_delay;
 };
 
 Tick random_time();

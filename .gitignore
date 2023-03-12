@@ -3,6 +3,9 @@ parser.out
 parsetab.py
 cscope.files
 cscope.out
+cscope.in.out
+cscope.po.out
+tags
 *.pyc
 *~
 .*.swp
@@ -30,3 +33,10 @@ m5out
 /system/arm/bootloader/arm64/boot_v2.arm64
 configs/example/memcheck.cfg
 configs/dram/lowp_sweep.cfg
+*.dot
+*.pdf
+*.svg
+config.ini
+config.json
+stats.txt
+fs

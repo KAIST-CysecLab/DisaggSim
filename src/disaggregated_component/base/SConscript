@@ -1,0 +1,6 @@
+Import('*')
+
+SimObject('BaseModule.py')
+
+Source('base_module.cc')
+

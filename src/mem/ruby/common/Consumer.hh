@@ -43,6 +43,7 @@
 class Consumer
 {
   public:
+    ClockedObject *em;
     Consumer(ClockedObject *_em)
         : em(_em)
     {
@@ -80,7 +81,6 @@ class Consumer
 
   private:
     std::set<Tick> m_scheduled_wakeups;
-    ClockedObject *em;
 };
 
 inline std::ostream&

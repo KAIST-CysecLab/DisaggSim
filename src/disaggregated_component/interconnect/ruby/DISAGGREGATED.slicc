@@ -1,0 +1,4 @@
+protocol "DISAGGREGATED";
+include "RubySlicc_interfaces.slicc";
+include "DISAGGREGATED-msg.sm";
+include "DISAGGREGATED-module.sm";

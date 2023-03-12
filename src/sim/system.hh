@@ -73,6 +73,9 @@ class ThreadContext;
 class System : public SimObject, public PCEventScope
 {
   private:
+    // DisaggSim START
+    bool isDummy;
+    // DisaggSim END
 
     /**
      * Private class for the system port which is only used as a
@@ -436,6 +439,8 @@ class System : public SimObject, public PCEventScope
 
   public:
 
+    //Disaggregated System Modification
+
     /**
      * Request an id used to create a request object in the system. All objects
      * that intend to issues requests into the memory system must request an id
@@ -469,7 +474,7 @@ class System : public SimObject, public PCEventScope
      * @param subrequestor String containing the subrequestor's name
      * @return the requestor's ID.
      */
-    RequestorID getRequestorId(const SimObject* requestor,
+    virtual RequestorID getRequestorId(const SimObject* requestor,
                          std::string subrequestor = std::string());
 
     /**
@@ -480,27 +485,27 @@ class System : public SimObject, public PCEventScope
      * @param requestorName full name of the requestor
      * @return the requestor's ID.
      */
-    RequestorID getGlobalRequestorId(const std::string& requestor_name);
+    virtual RequestorID getGlobalRequestorId(const std::string& requestor_name);
 
     /**
      * Get the name of an object for a given request id.
      */
-    std::string getRequestorName(RequestorID requestor_id);
+    virtual std::string getRequestorName(RequestorID requestor_id);
 
     /**
      * Looks up the RequestorID for a given SimObject
      * returns an invalid RequestorID (invldRequestorId) if not found.
      */
-    RequestorID lookupRequestorId(const SimObject* obj) const;
+    virtual RequestorID lookupRequestorId(const SimObject* obj) const;
 
     /**
      * Looks up the RequestorID for a given object name string
      * returns an invalid RequestorID (invldRequestorId) if not found.
      */
-    RequestorID lookupRequestorId(const std::string& name) const;
+    virtual RequestorID lookupRequestorId(const std::string& name) const;
 
     /** Get the number of requestors registered in the system */
-    RequestorID maxRequestors() { return requestors.size(); }
+    virtual RequestorID maxRequestors() { return requestors.size(); }
 
   protected:
     /** helper function for getRequestorId */

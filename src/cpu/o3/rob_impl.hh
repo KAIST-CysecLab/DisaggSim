@@ -338,8 +338,15 @@ ROB<Impl>::doSquash(ThreadID tid)
 
     bool robTailUpdate = false;
 
+    // for (int numSquashed = 0;
+    //      numSquashed < squashWidth &&
+    //      squashIt[tid] != instList[tid].end() &&
+    //      (*squashIt[tid])->seqNum > squashedSeqNum[tid];
+    //      ++numSquashed)
+
+    // DisaggSim
     for (int numSquashed = 0;
-         numSquashed < squashWidth &&
+         (numSquashed < squashWidth || cpu->isThreadExiting(tid)) &&
          squashIt[tid] != instList[tid].end() &&
          (*squashIt[tid])->seqNum > squashedSeqNum[tid];
          ++numSquashed)
